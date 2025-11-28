@@ -1,0 +1,16 @@
+// backend/middleware/authAdmin.js
+module.exports = function (req, res, next) {
+  // use environment value or fallback for dev
+  const adminSecret = (process.env.ADMIN_SECRET || '').toString().trim();
+
+  // accept from header, query param, or request body (helpful for testing)
+  const header = (req.headers['x-admin-secret'] || '').toString().trim();
+  const q = (req.query && req.query.adminSecret) ? String(req.query.adminSecret).trim() : '';
+  const b = (req.body && req.body.adminSecret) ? String(req.body.adminSecret).trim() : '';
+
+  if (header === adminSecret || q === adminSecret || b === adminSecret) {
+    return next();
+  }
+
+  return res.status(403).json({ error: 'Invalid or missing admin secret' });
+};
