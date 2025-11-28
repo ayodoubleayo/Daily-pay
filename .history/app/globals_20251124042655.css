@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FIX BACKGROUND OVERRIDE */
+:root {
+  --tw-bg-opacity: 1;
+}
+
+
+/* GLOBAL BACKGROUND IMAGE */
+body {
+  background-image: url('/bg3.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center center;
+}
+
+/* Make sure no component blocks the background */
+html, body {
+  min-height: 100%;
+}
+
+/* ---------- UI: cards / buttons / inputs ---------- */
+
+/* Pure white card with high shadow and subtle border */
+.card {
+  @apply bg-white rounded-2xl;               /* pure white rounded card */
+  box-shadow: 0 18px 50px rgba(16,24,40,0.14); /* high soft shadow */
+  border: 1px solid rgba(15,23,42,0.04);     /* subtle border to lift edges */
+}
+
+/* Slightly smaller card used for list items */
+.card-sm {
+  @apply bg-white rounded-lg;
+  box-shadow: 0 10px 30px rgba(16,24,40,0.10);
+  border: 1px solid rgba(15,23,42,0.04);
+}
+
+/* Primary button style (pill, bold) */
+.btn {
+  @apply px-4 py-2 rounded-full font-semibold inline-flex items-center justify-center;
+  background: linear-gradient(90deg,#2563eb,#1e40af); /* blue gradient */
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(37,99,235,0.12);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(37,99,235,0.16); }
+.btn:disabled { opacity: .6; transform: none; box-shadow: none; cursor: not-allowed; }
+
+/* Input / textarea / select */
+.input {
+  @apply w-full px-3 py-2 rounded-lg border bg-white outline-none;
+  border: 1px solid rgba(15,23,42,0.08);
+  transition: box-shadow .12s, border-color .12s;
+}
+.input:focus {
+  box-shadow: 0 8px 30px rgba(59,130,246,0.08);
+  border-color: rgba(59,130,246,0.55);
+}
+
+/* Image helper to keep consistent card images */
+.card-img {
+  @apply w-full h-48 object-cover rounded-lg;
+}
+
+/* Muted text */
+.muted { color: rgba(15,23,42,0.6); }
+
+/* small badge */
+.badge {
+  @apply inline-block text-xs font-semibold px-2 py-0.5 rounded-full;
+  background: rgba(15,23,42,0.06);
+  color: rgba(15,23,42,0.85);
+}

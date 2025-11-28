@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SSE Chat Pro Media</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #layout { display:flex; gap:20px; }
+    #main { flex:1; }
+    #users { width:200px; border:1px solid #ccc; padding:10px; height:400px; overflow:auto; }
+    #messages { border:1px solid #ccc; padding:10px; width:700px; height:400px; overflow:auto; background:#fafafa; }
+    .msg { margin-bottom:10px; }
+    .meta { font-size:0.85em; color:#666; }
+    .system { color:#007700; font-style:italic; }
+    .private { background:#fffbe6; padding:4px; border-radius:4px; }
+    img.upload { max-width:300px; display:block; margin-top:6px; border-radius:6px; }
+  </style>
+</head>
+<body>
+  <h1>SSE Chat Pro — Media & Private Messages</h1>
+
+  <div>
+    <label>Your name: <input id="username" placeholder="Your display name" /></label>
+    <button id="setName">Set Name</button>
+    <span id="online"></span>
+  </div>
+
+  <div id="layout">
+    <div id="main">
+      <div id="messages"></div>
+      <div style="margin-top:10px;">
+        <input id="msg" placeholder="Type a message" style="width:500px;" />
+        <select id="privateSelect"><option value="">Public</option></select>
+        <button id="sendBtn">Send</button>
+      </div>
+      <div style="margin-top:8px;">
+        <input type="file" id="fileInput" accept="image/*" />
+        <input id="caption" placeholder="Caption (optional)" style="width:300px;" />
+        <button id="uploadBtn">Upload & Send</button>
+      </div>
+    </div>
+
+    <div id="users">
+      <h3>Online Users</h3>
+      <ul id="userList"></ul>
+    </div>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const userListEl = document.getElementById('userList');
+    const privateSelect = document.getElementById('privateSelect');
+    const onlineEl = document.getElementById('online');
+    const usernameInput = document.getElementById('username');
+    const setNameBtn = document.getElementById('setName');
+
+    let username = sessionStorage.getItem('sse_chat_name') || '';
+    if (username) usernameInput.value = username;
+
+    function renderMessage(m) {
+      const div = document.createElement('div');
+      div.className = 'msg';
+      if (m.type === 'system') {
+        div.classList.add('system');
+        div.textContent = `[${new Date(m.time).toLocaleTimeString()}] ${m.text}`;
+      } else {
+        if (m.privateTo) div.classList.add('private');
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const who = (m.user === username) ? 'You' : m.user;
+        const targetLabel = m.privateTo ? ` → ${m.privateTo} (private)` : '';
+        meta.textContent = `[${new Date(m.time).toLocaleTimeString()}] ${who}${targetLabel}:`;
+        const body = document.createElement('div');
+        if (m.type === 'text') body.textContent = m.text;
+        if (m.type === 'image') {
+          const img = document.createElement('img');
+          img.src = m.imageUrl;
+          img.className = 'upload';
+          body.appendChild(img);
+          if (m.text) {
+            const cap = document.createElement('div'); cap.textContent = m.text;
+            body.appendChild(cap);
+          }
+        }
+        div.appendChild(meta);
+        div.appendChild(body);
+      }
+      messagesEl.appendChild(div);
+    }
+
+    function updateUsersList(users) {
+      userListEl.innerHTML = '';
+      privateSelect.innerHTML = '<option value="">Public</option>';
+      users.forEach(u => {
+        const li = document.createElement('li');
+        li.textContent = u;
+        li.style.cursor = 'pointer';
+        li.onclick = () => {
+          if (u === username) return alert('Cannot private-message yourself');
+          privateSelect.value = u;
+        };
+        userListEl.appendChild(li);
+
+        const opt = document.createElement('option');
+        opt.value = u;
+        opt.text = u;
+        privateSelect.appendChild(opt);
+      });
+    }
+
+    function setUsername(name) {
+      username = name.trim() || 'Anonymous';
+      sessionStorage.setItem('sse_chat_name', username);
+      connect();
+    }
+
+    setNameBtn.onclick = () => {
+      const n = usernameInput.value.trim();
+      if (!n) return alert('Enter a name');
+      setUsername(n);
+    };
+
+    document.getElementById('sendBtn').onclick = async () => {
+      const textEl = document.getElementById('msg');
+      const text = textEl.value.trim();
+      const target = privateSelect.value || null;
+      if (!text) return;
+      try {
+        await fetch('/send', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ user: username, text, target, type: 'text' })
+        });
+      } catch (err) {
+        alert('Send failed');
+      }
+      textEl.value = '';
+    };
+
+    document.getElementById('uploadBtn').onclick = async () => {
+      const fileInput = document.getElementById('fileInput');
+      if (!fileInput.files || fileInput.files.length === 0) return alert('Choose an image file first');
+      const fd = new FormData();
+      fd.append('file', fileInput.files[0]);
+      fd.append('user', username);
+      const target = privateSelect.value || '';
+      if (target) fd.append('target', target);
+      const caption = document.getElementById('caption').value || '';
+      fd.append('caption', caption);
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('Upload failed');
+        fileInput.value = '';
+        document.getElementById('caption').value = '';
+      } catch (err) {
+        alert('Upload failed');
+      }
+    };
+
+    // SSE connection
+    let source;
+    function connect() {
+      if (source) source.close();
+      const q = username ? '?user=' + encodeURIComponent(username) : '';
+      source = new EventSource('/stream' + q);
+
+      source.onopen = () => console.log('SSE open');
+      source.onerror = (e) => console.warn('SSE error', e);
+
+      source.onmessage = function(e) {
+        try {
+          const obj = JSON.parse(e.data);
+          // filter private messages: show if not private OR if privateTo === you OR user === you
+          if (obj.privateTo && obj.privateTo !== username && obj.user !== username) {
+            // not for you
+            return;
+          }
+          renderMessage(obj);
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        } catch (err) { console.error(err); }
+      };
+
+      source.addEventListener('history', function(e) {
+        try {
+          const arr = JSON.parse(e.data);
+          messagesEl.innerHTML = '';
+          arr.forEach(m => {
+            // filter same as above
+            if (m.privateTo && m.privateTo !== username && m.user !== username) return;
+            renderMessage(m);
+          });
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        } catch (err) { console.error(err); }
+      });
+
+      source.addEventListener('meta', function(e) {
+        try {
+          const m = JSON.parse(e.data);
+          onlineEl.textContent = `Online: ${m.online}`;
+          updateUsersList(m.users);
+        } catch (err) { console.error(err); }
+      });
+    }
+
+    // auto-connect if username stored
+    if (username) connect();
+  </script>
+</body>
+</html>

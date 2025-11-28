@@ -1,0 +1,158 @@
+[
+  {
+    "type": "system",
+    "user": "System",
+    "text": "hnj joined",
+    "time": "2025-09-10T09:42:57.575Z"
+  },
+  {
+    "type": "system",
+    "user": "System",
+    "text": "gh joined",
+    "time": "2025-09-10T09:42:57.626Z"
+  },
+  {
+    "type": "system",
+    "user": "System",
+    "text": "hnj left",
+    "time": "2025-09-10T09:43:02.232Z"
+  },
+  {
+    "type": "system",
+    "user": "System",
+    "text": "gh left",
+    "time": "2025-09-10T09:43:02.268Z"
+  },
+  {
+    "type": "system",
+    "user": "System",
+    "text": "hnj joined",
+    "time": "2025-09-10T09:44:07.298Z"
+  },
+  {
+    "type": "system",
+    "user": "System",
+    "text": "gh joined",
+    "time": "2025-09-10T09:44:07.355Z"
+  },
+  {
+    "type": "system",
+    "user": "System",
+    "text": "hnj left",
+    "time": "2025-09-10T09:45:21.441Z"
+  },
+  {
+    "type": "system",
+    "user": "System",
+    "text": "hnj joined",
+    "time": "2025-09-10T09:45:21.471Z"
+  },
+  {
+    "type": "image",
+    "user": "hnj",
+    "text": "ggsg",
+    "imageUrl": "/uploads/1757497545322-IMG_E4733.JPG",
+    "time": "2025-09-10T09:45:45.351Z",
+    "privateTo": null
+  },
+  {
+    "type": "text",
+    "user": "hnj",
+    "text": "hi baby",
+    "imageUrl": null,
+    "time": "2025-09-10T09:45:55.770Z",
+    "privateTo": null
+  },
+  {
+    "type": "text",
+    "user": "hnj",
+    "text": "hi gee",
+    "imageUrl": null,
+    "time": "2025-09-10T09:46:05.498Z",
+    "privateTo": "gh"
+  },
+  {
+    "type": "text",
+    "user": "hnj",
+    "text": "i love you so much",
+    "imageUrl": null,
+    "time": "2025-09-10T09:46:23.259Z",
+    "privateTo": "gh"
+  },
+  {
+    "type": "system",
+    "user": "System",
+    "text": "gh left",
+    "time": "2025-09-10T09:46:57.188Z"
+  },
+  {
+    "type": "system",
+    "user": "System",
+    "text": "gh joined",
+    "time": "2025-09-10T09:46:57.210Z"
+  },
+  {
+    "type": "text",
+    "user": "gh",
+    "text": "i notice you bro",
+    "imageUrl": null,
+    "time": "2025-09-10T09:47:21.963Z",
+    "privateTo": null
+  },
+  {
+    "type": "text",
+    "user": "hnj",
+    "text": "give me you number",
+    "imageUrl": null,
+    "time": "2025-09-10T09:47:44.130Z",
+    "privateTo": "hnj"
+  },
+  {
+    "type": "text",
+    "user": "gh",
+    "text": "you naa dey toast you naa self",
+    "imageUrl": null,
+    "time": "2025-09-10T09:48:31.135Z",
+    "privateTo": null
+  },
+  {
+    "type": "image",
+    "user": "hnj",
+    "text": "to her",
+    "imageUrl": "/uploads/1757497798117-IMG_E4732.JPG",
+    "time": "2025-09-10T09:49:58.199Z",
+    "privateTo": "hnj"
+  },
+  {
+    "type": "text",
+    "user": "hnj",
+    "text": "hi",
+    "imageUrl": null,
+    "time": "2025-09-10T09:56:18.709Z",
+    "privateTo": "hnj"
+  },
+  {
+    "type": "text",
+    "user": "hnj",
+    "text": "good morning",
+    "imageUrl": null,
+    "time": "2025-09-10T09:56:43.677Z",
+    "privateTo": null
+  },
+  {
+    "type": "text",
+    "user": "hnj",
+    "text": "what is happening in your area today ?",
+    "imageUrl": null,
+    "time": "2025-09-10T09:57:02.598Z",
+    "privateTo": null
+  },
+  {
+    "type": "text",
+    "user": "gh",
+    "text": "i need job in lagos",
+    "imageUrl": null,
+    "time": "2025-09-10T09:58:26.539Z",
+    "privateTo": "gh"
+  }
+]
