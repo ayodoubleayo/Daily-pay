@@ -1,4 +1,3 @@
-// backend/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -6,9 +5,16 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 const { sendMail } = require('../services/mailer');
+
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-dev';
 
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const COOKIE_NAME = 'token';
+const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const FRONTEND_URL =
+  process.env.NEXT_PUBLIC_FRONTEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:3000';
 
 // -------------------------------------------------------------
 // MAKE ME ADMIN ROUTE
@@ -26,7 +32,7 @@ router.get('/make-me-admin', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// REGISTER
+// REGISTER  (UPDATED — includes role in token + httpOnly cookie)
 // -------------------------------------------------------------
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
@@ -40,10 +46,22 @@ router.post('/register', async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email: normalizedEmail, passwordHash: hash });
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' });
+    // create token with role
+    const token = jwt.sign(
+      { id: user._id, role: user.role || 'user' },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    // set httpOnly cookie
+    res.cookie(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: COOKIE_MAX_AGE,
+    });
 
     res.json({
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -58,7 +76,7 @@ router.post('/register', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// LOGIN
+// LOGIN  (UPDATED — includes role in token + httpOnly cookie)
 // -------------------------------------------------------------
 router.post('/login', async (req, res) => {
   try {
@@ -68,17 +86,27 @@ router.post('/login', async (req, res) => {
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
-    // Note: removed temporary admin override for security reasons.
     if (user.banned) return res.status(403).json({ error: 'Account banned permanently' });
     if (user.suspended) return res.status(403).json({ error: 'Account suspended by admin' });
 
     const ok = await bcrypt.compare(password, user.passwordHash || '');
     if (!ok) return res.status(400).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign(
+      { id: user._id, role: user.role || 'user' },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    // set httpOnly cookie
+    res.cookie(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: COOKIE_MAX_AGE,
+    });
 
     res.json({
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -91,6 +119,18 @@ router.post('/login', async (req, res) => {
     console.error('login error', err);
     res.status(500).json({ error: 'Login failed' });
   }
+});
+
+// -------------------------------------------------------------
+// LOGOUT — clear cookie
+// -------------------------------------------------------------
+router.post('/logout', async (req, res) => {
+  res.clearCookie(COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  });
+  res.json({ ok: true });
 });
 
 // -------------------------------------------------------------
@@ -107,50 +147,37 @@ router.get('/users', async (req, res) => {
 
 // -------------------------------------------------------------
 // FORGOT PASSWORD
-// POST /api/auth/forgot-password
-// body: { email }
 // -------------------------------------------------------------
 router.post('/forgot-password', async (req, res) => {
   try {
     console.log('1. Forgot password route hit');
     const { email } = req.body;
-    console.log('2. Email from body:', email);
-    
+    console.log('2. Email:', email);
+
     if (!email) return res.status(400).json({ error: 'Email required' });
 
-    console.log('3. Looking up user...');
     const user = await User.findOne({ email: email.toLowerCase().trim() });
-    console.log('4. User found:', user ? 'YES' : 'NO');
-    
+    console.log('User found?', !!user);
+
     if (!user) {
-      console.log('5. No user found, returning fake success');
       return res.json({ ok: true, message: 'If that email exists, a reset link was sent.' });
     }
 
-    console.log('6. Creating reset token...');
-    // create a token and save its hash
     const token = crypto.randomBytes(32).toString('hex');
     const hashed = crypto.createHash('sha256').update(token).digest('hex');
-    const expires = Date.now() + 60 * 60 * 1000; // 1 hour
+    const expires = Date.now() + 60 * 60 * 1000;
 
     user.resetPasswordToken = hashed;
     user.resetPasswordExpires = new Date(expires);
     await user.save();
-    console.log('7. Token saved to user');
 
-    // reset link (frontend will read ?token=... )
     const resetLink = `${FRONTEND_URL.replace(/\/$/, '')}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
-    console.log('8. Reset link created:', resetLink);
 
     const html = `
       <p>Hello ${user.name || ''},</p>
       <p>You asked to reset your password. Click the link below to set a new password. This link will expire in 1 hour.</p>
       <p><a href="${resetLink}">Reset your password</a></p>
-      <p>If you didn't request this, ignore this email.</p>
     `;
-
-    console.log('9. About to send email to:', user.email);
-    console.log('10. From address:', process.env.MAIL_FROM);
 
     await sendMail({
       from: process.env.MAIL_FROM,
@@ -159,8 +186,6 @@ router.post('/forgot-password', async (req, res) => {
       html,
       text: `Reset your password: ${resetLink}`
     });
-
-    console.log('11. Email sent successfully!');
 
     return res.json({ ok: true, message: 'If that email exists, a reset link was sent.' });
   } catch (err) {
@@ -171,29 +196,26 @@ router.post('/forgot-password', async (req, res) => {
 
 // -------------------------------------------------------------
 // RESET PASSWORD
-// POST /api/auth/reset-password
-// body: { token, password, email }
 // -------------------------------------------------------------
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, password, email } = req.body;
-    if (!token || !password || !email) return res.status(400).json({ error: 'Missing fields' });
+    if (!token || !password || !email)
+      return res.status(400).json({ error: 'Missing fields' });
 
     const hashed = crypto.createHash('sha256').update(token).digest('hex');
 
     const user = await User.findOne({
       email: email.toLowerCase().trim(),
       resetPasswordToken: hashed,
-      resetPasswordExpires: { $gt: new Date() } // not expired
+      resetPasswordExpires: { $gt: new Date() }
     });
 
     if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
 
-    // update password
     const salt = await bcrypt.genSalt(10);
     user.passwordHash = await bcrypt.hash(password, salt);
 
-    // clear reset fields
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     user.lastActive = new Date();
